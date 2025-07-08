@@ -60,12 +60,9 @@
 <body>
     <div class="header">Выберите точку на карте</div>
     <div id="map"></div>
-    // Добавьте эту кнопку в HTML
-        <button id="test-btn">Тест отправки</button>  
     <div class="footer">
         <div class="coordinates">Координаты: <span id="coords-display">не выбраны</span></div>
         <button id="send-btn">Отправить координаты</button>
-        
     </div>
 
     <script>
@@ -76,27 +73,23 @@
         
         // Переменные для хранения координат
         let selectedCoords = null;
-        let map = null;
-        let placemark = null;
         
         // Инициализация карты
         ymaps.ready(initMap);
         
         function initMap() {
             // Создание карты
-            map = new ymaps.Map("map", {
+            const map = new ymaps.Map("map", {
                 center: [55.751244, 37.618423], // Москва
                 zoom: 10,
                 controls: ['zoomControl']
             });
             
-            // Создание пустой метки (изначально скрыта)
-            placemark = new ymaps.Placemark([0, 0], {}, {
+            // Создание метки
+            const placemark = new ymaps.Placemark([0, 0], {}, {
                 preset: 'islands#redDotIcon',
-                draggable: false,
-                visible: false // Сначала метка невидима
+                draggable: false
             });
-            map.geoObjects.add(placemark);
             
             // Обработчик клика по карте
             map.events.add('click', (e) => {
@@ -105,33 +98,21 @@
                 
                 // Обновление метки
                 placemark.geometry.setCoordinates(coords);
-                placemark.options.set('visible', true); // Делаем метку видимой
+                map.geoObjects.removeAll();
+                map.geoObjects.add(placemark);
                 
                 // Обновление отображения координат
                 document.getElementById('coords-display').textContent = 
                     `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
             });
         }
-        // И этот код в JavaScript
-        document.getElementById('test-btn').addEventListener('click', () => {
-            const testData = {"lat": 55.751244, "lon": 37.618423};
-            tg.sendData(JSON.stringify(testData));
-            tg.close();
-});
+        
         // Обработчик кнопки отправки
         document.getElementById('send-btn').addEventListener('click', () => {
             if (selectedCoords) {
-                // Отправка данных в Telegram в формате JSON
-                const data = {
-                    lat: selectedCoords[0],
-                    lon: selectedCoords[1]
-                };
-                
-                // Отправляем данные в виде строки JSON
-                tg.sendData(JSON.stringify(data));
-                
-                // Закрыть веб-приложение
-                tg.close();
+                // Отправка данных в Telegram
+                tg.sendData(selectedCoords.join(';'));
+                tg.close(); // Закрыть веб-приложение
             } else {
                 alert('Пожалуйста, выберите точку на карте!');
             }
