@@ -113,19 +113,17 @@
         // Обработчик кнопки отправки
         document.getElementById('send-btn').addEventListener('click', () => {
             if (selectedCoords) {
-                // Отправка данных в Telegram в правильном формате JSON
+                // Отправка данных в Telegram в формате JSON
                 const data = {
-                    latitude: selectedCoords[0],
-                    longitude: selectedCoords[1]
+                    lat: selectedCoords[0],
+                    lon: selectedCoords[1]
                 };
                 
-                // Вариант 1: Отправка в формате JSON (рекомендуется)
+                // Отправляем данные в виде строки JSON
                 tg.sendData(JSON.stringify(data));
                 
-                // Вариант 2: Отправка в формате "lat;lon" (для совместимости)
-                // tg.sendData(`${selectedCoords[0]};${selectedCoords[1]}`);
-                
-                tg.close(); // Закрыть веб-приложение
+                // Закрыть веб-приложение
+                tg.close();
             } else {
                 alert('Пожалуйста, выберите точку на карте!');
             }
