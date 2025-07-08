@@ -63,6 +63,8 @@
     <div class="footer">
         <div class="coordinates">Координаты: <span id="coords-display">не выбраны</span></div>
         <button id="send-btn">Отправить координаты</button>
+        // Добавьте эту кнопку в HTML
+        <button id="test-btn">Тест отправки</button>  
     </div>
 
     <script>
@@ -109,7 +111,12 @@
                     `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
             });
         }
-        
+        // И этот код в JavaScript
+        document.getElementById('test-btn').addEventListener('click', () => {
+            const testData = {"lat": 55.751244, "lon": 37.618423};
+            tg.sendData(JSON.stringify(testData));
+            tg.close();
+});
         // Обработчик кнопки отправки
         document.getElementById('send-btn').addEventListener('click', () => {
             if (selectedCoords) {
