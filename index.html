@@ -73,23 +73,27 @@
         
         // Переменные для хранения координат
         let selectedCoords = null;
+        let map = null;
+        let placemark = null;
         
         // Инициализация карты
         ymaps.ready(initMap);
         
         function initMap() {
             // Создание карты
-            const map = new ymaps.Map("map", {
+            map = new ymaps.Map("map", {
                 center: [55.751244, 37.618423], // Москва
                 zoom: 10,
                 controls: ['zoomControl']
             });
             
-            // Создание метки
-            const placemark = new ymaps.Placemark([0, 0], {}, {
+            // Создание пустой метки (изначально скрыта)
+            placemark = new ymaps.Placemark([0, 0], {}, {
                 preset: 'islands#redDotIcon',
-                draggable: false
+                draggable: false,
+                visible: false // Сначала метка невидима
             });
+            map.geoObjects.add(placemark);
             
             // Обработчик клика по карте
             map.events.add('click', (e) => {
@@ -98,8 +102,7 @@
                 
                 // Обновление метки
                 placemark.geometry.setCoordinates(coords);
-                map.geoObjects.removeAll();
-                map.geoObjects.add(placemark);
+                placemark.options.set('visible', true); // Делаем метку видимой
                 
                 // Обновление отображения координат
                 document.getElementById('coords-display').textContent = 
@@ -110,8 +113,18 @@
         // Обработчик кнопки отправки
         document.getElementById('send-btn').addEventListener('click', () => {
             if (selectedCoords) {
-                // Отправка данных в Telegram
-                tg.sendData(selectedCoords.join(';'));
+                // Отправка данных в Telegram в правильном формате JSON
+                const data = {
+                    latitude: selectedCoords[0],
+                    longitude: selectedCoords[1]
+                };
+                
+                // Вариант 1: Отправка в формате JSON (рекомендуется)
+                tg.sendData(JSON.stringify(data));
+                
+                // Вариант 2: Отправка в формате "lat;lon" (для совместимости)
+                // tg.sendData(`${selectedCoords[0]};${selectedCoords[1]}`);
+                
                 tg.close(); // Закрыть веб-приложение
             } else {
                 alert('Пожалуйста, выберите точку на карте!');
