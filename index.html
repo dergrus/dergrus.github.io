@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор координат</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=675b45d6-a47a-413b-9af6-dccf2d9e1d65&lang=ru_RU"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=ВАШ_API_КЛЮЧ&lang=ru_RU"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -71,6 +71,16 @@
             font-size: 12px;
             color: #888;
         }
+        .debug {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            font-size: 11px;
+            max-height: 100px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -79,24 +89,37 @@
     <div class="footer">
         <div class="coordinates">Координаты: <span id="coords-display">не выбраны</span></div>
         <button id="send-btn" disabled>Отправить координаты</button>
-        <div class="status" id="status">Готово к работе</div>
+        <div class="status" id="status">Инициализация...</div>
+        <div class="debug" id="debug"></div>
     </div>
 
     <script>
         // ================== Инициализация ==================
         const tg = window.Telegram.WebApp;
         const statusEl = document.getElementById('status');
+        const debugEl = document.getElementById('debug');
         let selectedCoords = null;
         let map, placemark;
         
+        // Функция логирования
+        function log(message) {
+            const now = new Date().toLocaleTimeString();
+            debugEl.innerHTML += `[${now}] ${message}\n`;
+            debugEl.scrollTop = debugEl.scrollHeight;
+            console.log(message);
+        }
+        
         // Инициализация Telegram WebApp
+        log("Инициализация Telegram WebApp");
         tg.expand();
         tg.MainButton.hide();
+        log("WebApp инициализирован");
         statusEl.textContent = "Инициализация карты...";
         
         // ================== Функции карты ==================
         function initMap() {
             try {
+                log("Инициализация карты");
                 statusEl.textContent = "Загрузка карты...";
                 
                 map = new ymaps.Map("map", {
@@ -105,11 +128,13 @@
                     controls: ['zoomControl', 'fullscreenControl']
                 });
                 
+                log("Карта успешно загружена");
                 statusEl.textContent = "Карта загружена. Выберите точку";
                 
                 // Обработчик клика по карте
                 map.events.add('click', (e) => {
                     const coords = e.get('coords');
+                    log(`Клик по карте: ${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`);
                     selectedCoords = coords;
                     
                     // Удаляем предыдущую метку
@@ -135,9 +160,10 @@
                 });
                 
             } catch (error) {
-                console.error("Ошибка инициализации карты:", error);
+                const msg = `Ошибка инициализации карты: ${error}`;
+                log(msg);
                 statusEl.textContent = "Ошибка загрузки карты";
-                alert("Произошла ошибка при загрузке карты. Пожалуйста, попробуйте позже.");
+                alert(msg);
             }
         }
         
@@ -146,6 +172,7 @@
             if (selectedCoords) {
                 try {
                     statusEl.textContent = "Отправка данных...";
+                    log("Подготовка данных к отправке");
                     
                     const data = JSON.stringify({
                         lat: selectedCoords[0],
@@ -153,36 +180,49 @@
                         timestamp: new Date().toISOString()
                     });
                     
-                    console.log("Отправляемые данные:", data);
+                    log(`Отправляемые данные: ${data}`);
                     
                     // Отправляем данные
                     tg.sendData(data);
+                    log("Данные отправлены через tg.sendData()");
                     
                     // Закрываем веб-приложение
                     setTimeout(() => {
                         tg.close();
-                    }, 300);
+                        log("Веб-приложение закрыто");
+                    }, 500);
                     
                 } catch (error) {
-                    console.error("Ошибка отправки данных:", error);
+                    const msg = `Ошибка отправки данных: ${error}`;
+                    log(msg);
                     statusEl.textContent = "Ошибка отправки данных";
-                    alert("Произошла ошибка при отправке данных. Пожалуйста, попробуйте снова.");
+                    alert(msg);
                 }
+            } else {
+                log("Попытка отправки без выбранных координат");
+                alert("Пожалуйста, выберите точку на карте!");
             }
         });
         
         // ================== Запуск карты ==================
+        log("Загрузка Яндекс.Карт...");
         ymaps.ready(initMap);
         
         // Обработчик ошибок карты
         ymaps.ready().then(
-            () => console.log("YMaps успешно загружен"),
+            () => log("YMaps успешно загружен"),
             (err) => {
-                console.error("Ошибка загрузки Yandex Maps:", err);
+                const msg = `Ошибка загрузки Yandex Maps: ${err}`;
+                log(msg);
                 statusEl.textContent = "Ошибка загрузки карты";
-                alert("Не удалось загрузить карты. Пожалуйста, проверьте интернет-соединение.");
+                alert(msg);
             }
         );
+        
+        // Дополнительная диагностика
+        log(`Версия WebApp: ${tg.version}`);
+        log(`Платформа: ${tg.platform}`);
+        log(`Инициатор: ${tg.initData}`);
     </script>
 </body>
 </html>
