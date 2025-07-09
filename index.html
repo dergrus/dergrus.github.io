@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор координат</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=675b45d6-a47a-413b-9af6-dccf2d9e1d65&lang=ru_RU"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=ВАШ_API_КЛЮЧ&lang=ru_RU"></script>
     <style>
         * {
             margin: 0;
@@ -54,6 +54,16 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #006699;
         }
     </style>
 </head>
@@ -62,7 +72,7 @@
     <div id="map"></div>
     <div class="footer">
         <div class="coordinates">Координаты: <span id="coords-display">не выбраны</span></div>
-        <button id="send-btn">Отправить координаты</button>
+        <button id="send-btn" disabled>Отправить координаты</button>
     </div>
 
     <script>
@@ -73,22 +83,17 @@
         
         // Переменные для хранения координат
         let selectedCoords = null;
+        let map, placemark;
         
         // Инициализация карты
         ymaps.ready(initMap);
         
         function initMap() {
             // Создание карты
-            const map = new ymaps.Map("map", {
+            map = new ymaps.Map("map", {
                 center: [55.751244, 37.618423], // Москва
                 zoom: 10,
                 controls: ['zoomControl']
-            });
-            
-            // Создание метки
-            const placemark = new ymaps.Placemark([0, 0], {}, {
-                preset: 'islands#redDotIcon',
-                draggable: false
             });
             
             // Обработчик клика по карте
@@ -96,25 +101,40 @@
                 const coords = e.get('coords');
                 selectedCoords = coords;
                 
-                // Обновление метки
-                placemark.geometry.setCoordinates(coords);
-                map.geoObjects.removeAll();
+                // Удаляем предыдущую метку, если есть
+                if (placemark) {
+                    map.geoObjects.remove(placemark);
+                }
+                
+                // Создаем новую метку
+                placemark = new ymaps.Placemark(coords, {}, {
+                    preset: 'islands#redDotIcon',
+                    draggable: false
+                });
+                
                 map.geoObjects.add(placemark);
                 
                 // Обновление отображения координат
                 document.getElementById('coords-display').textContent = 
                     `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+                
+                // Активируем кнопку отправки
+                document.getElementById('send-btn').disabled = false;
             });
         }
         
         // Обработчик кнопки отправки
         document.getElementById('send-btn').addEventListener('click', () => {
             if (selectedCoords) {
-                // Отправка данных в Telegram
-                tg.sendData(selectedCoords.join(';'));
+                // Формируем данные в формате JSON
+                const data = JSON.stringify({
+                    lat: selectedCoords[0],
+                    lon: selectedCoords[1]
+                });
+                
+                // Отправляем данные в Telegram
+                tg.sendData(data);
                 tg.close(); // Закрыть веб-приложение
-            } else {
-                alert('Пожалуйста, выберите точку на карте!');
             }
         });
     </script>
