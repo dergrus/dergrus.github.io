@@ -6,90 +6,18 @@
     <title>Тестовое веб-приложение</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 500px;
-            padding: 40px;
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 32px;
-        }
-        p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 18px;
-            line-height: 1.6;
-        }
-        .btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 16px 40px;
-            font-size: 20px;
-            border-radius: 50px;
-            cursor: pointer;
-            margin: 20px 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        .btn:hover {
-            background: #45a049;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-        }
-        .status {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 30px;
-            font-size: 18px;
-            min-height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            background: #2575fc;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-        }
+        /* Стили остаются без изменений */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { background: rgba(255, 255, 255, 0.95); border-radius: 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); width: 100%; max-width: 500px; padding: 40px; text-align: center; }
+        h1 { color: #333; margin-bottom: 20px; font-size: 32px; }
+        p { color: #666; margin-bottom: 30px; font-size: 18px; line-height: 1.6; }
+        .btn { background: #4CAF50; color: white; border: none; padding: 16px 40px; font-size: 20px; border-radius: 50px; cursor: pointer; margin: 20px 0; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+        .btn:hover { background: #45a049; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+        .status { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-top: 30px; font-size: 18px; min-height: 80px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .logo { width: 80px; height: 80px; margin: 0 auto 20px; background: #2575fc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 40px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -113,12 +41,13 @@
         function checkInit() {
             const status = document.getElementById('status');
             if (!webApp || !webApp.ready) {
+                console.error("Telegram WebApp API not available");
                 status.innerHTML = "❌ Telegram WebApp API не доступен";
                 status.className = "status error";
                 return false;
             }
             
-            // Расширяем на весь экран
+            console.log("WebApp initialized successfully");
             webApp.expand();
             return true;
         }
@@ -129,8 +58,6 @@
             
             // Проверка инициализации перед отправкой
             if (!checkInit()) {
-                status.innerHTML = "❌ Веб-приложение не инициализировано";
-                status.className = "status error";
                 return;
             }
             
@@ -147,6 +74,8 @@
                     platform: webApp.platform
                 };
                 
+                console.log("Sending data:", testData);
+                
                 // Отправляем данные
                 webApp.sendData(JSON.stringify(testData));
                 
@@ -155,14 +84,16 @@
                 status.className = "status success";
                 
             } catch (error) {
+                console.error("WebApp Error:", error);
                 status.innerHTML = `❌ Ошибка: ${error.message}`;
                 status.className = "status error";
-                console.error("WebApp Error:", error);
             }
         }
         
         // Инициализация
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM content loaded");
+            
             // Проверяем инициализацию при загрузке
             if (checkInit()) {
                 document.getElementById('status').innerHTML = 
