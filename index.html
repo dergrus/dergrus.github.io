@@ -127,7 +127,10 @@
         function sendData() {
             const status = document.getElementById('status');
             
+            // Проверка инициализации перед отправкой
             if (!checkInit()) {
+                status.innerHTML = "❌ Веб-приложение не инициализировано";
+                status.className = "status error";
                 return;
             }
             
@@ -137,8 +140,8 @@
                 
                 // Создаем тестовые данные
                 const testData = {
-                    action: "test_message",
-                    message: "Привет от Telegram WebApp!",
+                    action: "button_click",
+                    message: "Данные успешно отправлены из веб-приложения!",
                     timestamp: new Date().toISOString(),
                     user: webApp.initDataUnsafe.user?.id || "unknown",
                     platform: webApp.platform
@@ -148,13 +151,8 @@
                 webApp.sendData(JSON.stringify(testData));
                 
                 // Обновляем статус
-                status.innerHTML = "✅ Данные успешно отправлены!";
+                status.innerHTML = "✅ Данные успешно отправлены!<br>Закройте окно или ожидайте ответа бота";
                 status.className = "status success";
-                
-                // Закрываем веб-приложение через 2 секунды
-                setTimeout(() => {
-                    webApp.close();
-                }, 2000);
                 
             } catch (error) {
                 status.innerHTML = `❌ Ошибка: ${error.message}`;
