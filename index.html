@@ -1,60 +1,208 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор координат на карте</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://api-maps.yandex.ru/2.1/?apikey=675b45d6-a47a-413b-9af6-dccf2d9e1d65&lang=ru_RU"></script>
-    <style>/* ... стили ... */</style>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            padding: 15px;
+            background: #f5f5f5;
+        }
+        #map {
+            width: 100%;
+            height: 70vh;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #2481cc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1c6db0;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
 </head>
 <body>
     <div id="map"></div>
-    <button id="sendBtn">Отправить</button>
+    <div id="info">Нажмите на карту, чтобы выбрать координаты</div>
+    <button id="sendButton" disabled>Отправить координаты</button>
+    <div id="status" class="status"></div>
 
     <script>
-        // Инициализация WebApp
+        // === Инициализация Telegram WebApp ===
         function initTelegram() {
-            if (typeof Telegram === 'undefined') {
-                console.error("Telegram object not found!");
+            if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+                Telegram.WebApp.ready();
+                console.log("Telegram WebApp initialized. Version:", Telegram.WebApp.version);
+                return true;
+            } else {
+                console.warn("Telegram WebApp not detected. Running in standalone mode");
                 return false;
             }
-            
-            if (!Telegram.WebApp) {
-                console.error("Telegram.WebApp not available");
-                return false;
-            }
-            
-            Telegram.WebApp.ready();
-            console.log("Telegram WebApp initialized. Version:", Telegram.WebApp.version);
-            return true;
         }
 
         // Проверяем инициализацию
-        if (!initTelegram()) {
-            alert("Ошибка инициализации Telegram API. Приложение работает в ограниченном режиме.");
-        }
-
-        // Инициализация карты
-        ymaps.ready(() => {
-            const map = new ymaps.Map("map", {...});
-            
-            document.getElementById('sendBtn').addEventListener('click', () => {
-                const coords = map.getCenter();
-                
-                // Пытаемся отправить через Telegram API
-                try {
-                    if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-                        Telegram.WebApp.sendData(JSON.stringify({
-                            lat: coords[0],
-                            lon: coords[1]
-                        }));
-                    } else {
-                        throw new Error("Telegram API unavailable");
-                    }
-                } catch (error) {
-                    console.error("Send error:", error);
-                    alert("Ошибка отправки: " + error.message);
-                }
+        const isTelegram = initTelegram();
+        
+        // === Элементы интерфейса ===
+        const infoDiv = document.getElementById('info');
+        const sendButton = document.getElementById('sendButton');
+        const statusDiv = document.getElementById('status');
+        
+        // === Работа с картой ===
+        let map, placemark, selectedCoords = null;
+        
+        ymaps.ready(initMap);
+        
+        function initMap() {
+            map = new ymaps.Map("map", {
+                center: [55.751574, 37.573856], // Москва
+                zoom: 10,
+                controls: ['zoomControl']
             });
+            
+            // Обработка клика по карте
+            map.events.add('click', function(e) {
+                const coords = e.get('coords');
+                selectedCoords = coords;
+                
+                // Удаляем предыдущую метку
+                if (placemark) {
+                    map.geoObjects.remove(placemark);
+                }
+                
+                // Добавляем новую метку
+                placemark = new ymaps.Placemark(coords, {}, {
+                    preset: 'islands#redDotIcon',
+                    draggable: false
+                });
+                
+                map.geoObjects.add(placemark);
+                
+                // Обновляем информацию
+                infoDiv.textContent = 
+                    `Выбрано: Широта ${coords[0].toFixed(6)}, Долгота ${coords[1].toFixed(6)}`;
+                
+                // Активируем кнопку
+                sendButton.disabled = false;
+                clearStatus();
+            });
+        }
+        
+        // === Функции для работы со статусом ===
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'status error' : 'status success';
+            statusDiv.style.display = 'block';
+        }
+        
+        function clearStatus() {
+            statusDiv.style.display = 'none';
+        }
+        
+        // === Обработка отправки координат ===
+        sendButton.addEventListener('click', function() {
+            if (!selectedCoords) {
+                showStatus("Сначала выберите точку на карте!", true);
+                return;
+            }
+            
+            const data = {
+                lat: selectedCoords[0],
+                lon: selectedCoords[1]
+            };
+            
+            // Если в Telegram - отправляем через WebApp
+            if (isTelegram) {
+                try {
+                    Telegram.WebApp.sendData(JSON.stringify(data));
+                    showStatus("Координаты отправлены! Закрываем приложение...");
+                    
+                    // Закрываем веб-приложение через 1 секунду
+                    setTimeout(() => {
+                        Telegram.WebApp.close();
+                    }, 1000);
+                    
+                } catch (error) {
+                    showStatus(`Ошибка отправки: ${error.message}`, true);
+                    console.error("Telegram sendData error:", error);
+                }
+            } 
+            // Режим тестирования вне Telegram
+            else {
+                showStatus(`Тестовый режим. Координаты: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                console.log("Test mode coordinates:", data);
+                
+                // Имитация отправки для теста
+                setTimeout(() => {
+                    showStatus("Имитация: данные отправлены в бот");
+                }, 1000);
+            }
         });
+        
+        // === Вспомогательные функции ===
+        function simulateTelegram() {
+            window.Telegram = {
+                WebApp: {
+                    ready: () => console.log("Simulated Telegram ready"),
+                    sendData: (data) => {
+                        console.log("Simulated sendData:", data);
+                        return true;
+                    },
+                    close: () => console.log("Simulated WebApp close"),
+                    version: "6.7+ (simulated)"
+                }
+            };
+            initTelegram();
+        }
+        
+        // Для тестирования вне Telegram (раскомментировать)
+        // simulateTelegram();
     </script>
 </body>
 </html>
