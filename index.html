@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор координат на карте</title>
+    <!-- Подключение Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Leaflet для карты -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -19,6 +22,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            background: #f5f5f5;
         }
         #header {
             padding: 15px;
@@ -27,6 +31,7 @@
             text-align: center;
             font-size: 18px;
             font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         #map-container {
             flex: 1;
@@ -50,6 +55,7 @@
             border-radius: 8px;
             font-size: 14px;
             text-align: center;
+            border: 1px solid #e9ecef;
         }
         button {
             padding: 14px;
@@ -72,29 +78,47 @@
         .leaflet-marker-icon {
             filter: hue-rotate(200deg) saturate(200%);
         }
+        #status {
+            display: none;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
-    <div id="header">Выбор координат на карте</div>
+    <div id="header">Выберите точку на карте</div>
     <div id="map-container">
         <div id="map"></div>
     </div>
     <div id="controls">
         <div id="info">Нажмите на карту, чтобы выбрать точку</div>
         <button id="sendButton" disabled>Отправить координаты</button>
+        <div id="status"></div>
     </div>
 
     <script>
-        // Инициализация карты (как в статье)
+        // ===== Инициализация карты =====
         const map = L.map('map').setView([55.751574, 37.573856], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 19
         }).addTo(map);
         
         let marker = null;
+        let selectedCoords = null;
         
-        // Обработка клика по карте (как в статье)
+        // ===== Обработка клика по карте =====
         map.on('click', (e) => {
             // Удаляем предыдущий маркер
             if (marker) {
@@ -103,6 +127,7 @@
             
             // Добавляем новый маркер
             marker = L.marker(e.latlng).addTo(map);
+            selectedCoords = e.latlng;
             
             // Обновляем информацию
             document.getElementById('info').textContent = 
@@ -112,31 +137,93 @@
             document.getElementById('sendButton').disabled = false;
         });
         
-        // Инициализация Telegram WebApp (как в статье)
-        Telegram.WebApp.ready();
+        // ===== Инициализация Telegram WebApp =====
+        function initTelegram() {
+            try {
+                // Проверяем наличие объекта Telegram
+                if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+                    // Инициализируем WebApp
+                    Telegram.WebApp.ready();
+                    
+                    // Раскрываем на весь экран
+                    Telegram.WebApp.expand();
+                    
+                    // Добавляем обработчик событий отправки
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                console.error('Ошибка инициализации Telegram:', e);
+                return false;
+            }
+        }
         
-        // Обработка кнопки отправки (как в статье)
-        document.getElementById('sendButton').addEventListener('click', () => {
-            if (!marker) {
-                alert('Пожалуйста, сначала выберите точку на карте');
+        // ===== Отправка координат =====
+        function sendCoordinates() {
+            if (!selectedCoords) {
+                showStatus("Сначала выберите точку на карте!", true);
                 return;
             }
             
-            // Получаем координаты
-            const coords = marker.getLatLng();
+            // Формируем данные для отправки
+            const data = {
+                lat: selectedCoords.lat,
+                lng: selectedCoords.lng
+            };
             
-            // Отправляем данные (как в статье)
-            Telegram.WebApp.sendData(JSON.stringify({
-                lat: coords.lat,
-                lng: coords.lng
-            }));
-            
-            // Закрываем веб-приложение (как в статье)
-            Telegram.WebApp.close();
-        });
+            try {
+                // Проверяем доступность Telegram API
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.sendData) {
+                    // Отправляем данные
+                    Telegram.WebApp.sendData(JSON.stringify(data));
+                    showStatus("Координаты отправлены! Приложение закроется...");
+                    
+                    // Закрываем веб-приложение
+                    setTimeout(() => {
+                        try {
+                            Telegram.WebApp.close();
+                        } catch (closeError) {
+                            console.error('Ошибка закрытия:', closeError);
+                        }
+                    }, 500);
+                } else {
+                    showStatus("Ошибка: приложение запущено вне Telegram", true);
+                }
+            } catch (error) {
+                showStatus(`Ошибка отправки: ${error.message}`, true);
+                console.error('Ошибка при отправке данных:', error);
+            }
+        }
         
-        // Дополнительно: расширяем приложение на весь экран
-        Telegram.WebApp.expand();
+        // ===== Показать статусное сообщение =====
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'status-error' : 'status-success';
+            statusEl.style.display = 'block';
+            
+            if (isError) {
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+        
+        // ===== Инициализация при загрузке страницы =====
+        document.addEventListener('DOMContentLoaded', () => {
+            // Инициализируем Telegram WebApp
+            const isTelegram = initTelegram();
+            
+            // Назначаем обработчик кнопки
+            document.getElementById('sendButton').addEventListener('click', sendCoordinates);
+            
+            // Для отладки: логируем состояние
+            console.log('Telegram WebApp initialized:', isTelegram);
+            if (isTelegram) {
+                console.log('WebApp version:', Telegram.WebApp.version);
+                console.log('Platform:', Telegram.WebApp.platform);
+            }
+        });
     </script>
 </body>
 </html>
