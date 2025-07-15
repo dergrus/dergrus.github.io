@@ -113,6 +113,7 @@
         // ===== Глобальные переменные =====
         let map, marker, selectedCoords = null;
         let debugLog = "=== Журнал отладки ===\n";
+        let isTelegram = false;
         
         // ===== Инициализация Telegram =====
         function initTelegram() {
@@ -191,7 +192,8 @@
             const data = {
                 lat: selectedCoords[0],
                 lon: selectedCoords[1],
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                initData: window.Telegram?.WebApp?.initData || ""
             };
             
             debugLog += `🔄 Попытка отправки: ${JSON.stringify(data)}\n`;
@@ -202,7 +204,7 @@
                     Telegram.WebApp.sendData(JSON.stringify(data));
                     debugLog += "✅ Данные отправлены через Telegram API\n";
                     
-                    updateStatus("Координаты отправлены! Закрываем приложение...");
+                    updateStatus("Координаты отправлены! Закрываем приложение...", false);
                     
                     // Закрываем веб-приложение
                     setTimeout(() => {
@@ -223,7 +225,7 @@
             else {
                 const statusMsg = "Режим отладки: координаты не отправлены";
                 debugLog += `⚠️ ${statusMsg}\n`;
-                updateStatus(`${statusMsg}: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+                updateStatus(`${statusMsg}: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`, false);
             }
         }
         
@@ -248,7 +250,7 @@
         
         // ===== Инициализация при загрузке =====
         document.addEventListener('DOMContentLoaded', () => {
-            const isTelegram = initTelegram();
+            isTelegram = initTelegram();
             
             // Инициализируем карту
             initMap();
