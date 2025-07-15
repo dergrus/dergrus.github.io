@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выбор координат</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -118,15 +117,24 @@
         // ===== Инициализация Telegram =====
         function initTelegram() {
             try {
+                // Проверяем наличие Telegram WebApp API
                 if (window.Telegram && Telegram.WebApp) {
+                    debugLog += "✅ Объект Telegram обнаружен\n";
+                    
+                    // Инициализируем WebApp
                     Telegram.WebApp.ready();
-                    debugLog += "✅ Telegram WebApp инициализирован\n";
-                    debugLog += `Platform: ${Telegram.WebApp.platform}\n`;
-                    debugLog += `Init Data: ${JSON.stringify(Telegram.WebApp.initData || {})}\n`;
+                    debugLog += "✅ Telegram.WebApp.ready() вызван\n";
                     
                     // Добавляем индикатор Telegram-режима
                     document.body.classList.add('telegram-mode');
+                    
+                    // Логируем информацию о платформе
+                    debugLog += `Platform: ${Telegram.WebApp.platform}\n`;
+                    debugLog += `Version: ${Telegram.WebApp.version}\n`;
+                    
                     return true;
+                } else {
+                    debugLog += "❌ Объект Telegram не обнаружен\n";
                 }
             } catch (e) {
                 debugLog += `❌ Ошибка инициализации Telegram: ${e.message}\n`;
@@ -192,8 +200,7 @@
             const data = {
                 lat: selectedCoords[0],
                 lon: selectedCoords[1],
-                timestamp: Date.now(),
-                initData: window.Telegram?.WebApp?.initData || ""
+                timestamp: Date.now()
             };
             
             debugLog += `🔄 Попытка отправки: ${JSON.stringify(data)}\n`;
@@ -201,7 +208,11 @@
             // Проверяем доступность sendData
             if (isSendDataAvailable()) {
                 try {
+                    debugLog += "Вызываем Telegram.WebApp.sendData...\n";
+                    
+                    // Вызываем функцию отправки
                     Telegram.WebApp.sendData(JSON.stringify(data));
+                    
                     debugLog += "✅ Данные отправлены через Telegram API\n";
                     
                     updateStatus("Координаты отправлены! Закрываем приложение...", false);
@@ -209,8 +220,12 @@
                     // Закрываем веб-приложение
                     setTimeout(() => {
                         try {
-                            Telegram.WebApp.close();
-                            debugLog += "🔒 Веб-приложение закрыто\n";
+                            if (Telegram.WebApp.close) {
+                                Telegram.WebApp.close();
+                                debugLog += "🔒 Веб-приложение закрыто\n";
+                            } else {
+                                debugLog += "⚠️ Telegram.WebApp.close не доступен\n";
+                            }
                         } catch (closeError) {
                             debugLog += `❌ Ошибка закрытия: ${closeError.message}\n`;
                         }
@@ -218,6 +233,7 @@
                     
                 } catch (error) {
                     debugLog += `❌ Ошибка отправки: ${error.message}\n`;
+                    debugLog += `Stack: ${error.stack}\n`;
                     updateStatus(`Ошибка отправки: ${error.message}`, true);
                 }
             } 
@@ -225,6 +241,7 @@
             else {
                 const statusMsg = "Режим отладки: координаты не отправлены";
                 debugLog += `⚠️ ${statusMsg}\n`;
+                debugLog += `Причина: ${isTelegram ? 'Telegram API недоступен' : 'Не в Telegram'}\n`;
                 updateStatus(`${statusMsg}: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`, false);
             }
         }
@@ -250,21 +267,34 @@
         
         // ===== Инициализация при загрузке =====
         document.addEventListener('DOMContentLoaded', () => {
-            isTelegram = initTelegram();
+            // Загружаем Telegram WebApp SDK динамически
+            const telegramScript = document.createElement('script');
+            telegramScript.src = 'https://telegram.org/js/telegram-web-app.js';
+            telegramScript.onload = () => {
+                debugLog += "✅ Telegram WebApp SDK загружен\n";
+                isTelegram = initTelegram();
+                initMap();
+                
+                // Логирование состояния
+                debugLog += `Режим Telegram: ${isTelegram ? "ДА" : "НЕТ"}\n`;
+                debugLog += `sendData доступен: ${isSendDataAvailable() ? "ДА" : "НЕТ"}\n`;
+                debugLog += `User Agent: ${navigator.userAgent}\n`;
+                
+                // Кнопка отправки
+                document.getElementById('sendButton').addEventListener('click', sendCoordinates);
+                
+                // Кнопка отладки
+                document.getElementById('debugButton').addEventListener('click', showDebugInfo);
+            };
             
-            // Инициализируем карту
-            initMap();
+            telegramScript.onerror = () => {
+                debugLog += "❌ Не удалось загрузить Telegram WebApp SDK\n";
+                updateStatus("Ошибка загрузки Telegram API. Откройте в Telegram.", true);
+                isTelegram = false;
+                initMap();
+            };
             
-            // Кнопка отправки
-            document.getElementById('sendButton').addEventListener('click', sendCoordinates);
-            
-            // Кнопка отладки
-            document.getElementById('debugButton').addEventListener('click', showDebugInfo);
-            
-            // Логирование состояния
-            debugLog += `Режим Telegram: ${isTelegram ? "ДА" : "НЕТ"}\n`;
-            debugLog += `sendData доступен: ${isSendDataAvailable() ? "ДА" : "НЕТ"}\n`;
-            debugLog += `User Agent: ${navigator.userAgent}\n`;
+            document.head.appendChild(telegramScript);
         });
     </script>
 </body>
