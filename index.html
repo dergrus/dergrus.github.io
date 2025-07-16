@@ -2,58 +2,71 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Web App</title>
+    <title>Web App Debug</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-            background-color: #f0f2f5;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .container {
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
             text-align: center;
-            max-width: 90%;
         }
         button {
             padding: 15px 30px;
             font-size: 18px;
-            cursor: pointer;
-            background-color: #0088cc;
+            background: #0088cc;
             color: white;
             border: none;
-            border-radius: 10px;
-            transition: all 0.3s ease;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px;
         }
-        button:hover {
-            background-color: #006699;
-            transform: scale(1.05);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
+        #status {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Приветственное приложение</h1>
-        <button onclick="sendHello()">Отправить "Привет!"</button>
-    </div>
+    <h1>Тестовое веб-приложение</h1>
+    <button onclick="sendHello()">Отправить "Привет!"</button>
+    
+    <div id="status">Статус: готов к работе</div>
 
     <script>
-        // Инициализация Web App (ОБЯЗАТЕЛЬНО!)
-        Telegram.WebApp.ready();
+        // Элемент для вывода статуса
+        const statusEl = document.getElementById('status');
+        
+        try {
+            // Инициализация Web App
+            Telegram.WebApp.ready();
+            statusEl.textContent = 'Статус: WebApp инициализирован';
+            console.log("WebApp initialized");
+        } catch (e) {
+            statusEl.textContent = 'Ошибка инициализации: ' + e.message;
+            console.error("Initialization error:", e);
+        }
         
         function sendHello() {
-            // Отправляем строку с приветствием
-            Telegram.WebApp.sendData("Привет!");
+            statusEl.textContent = 'Отправка данных...';
+            console.log("Sending data...");
             
-            // Закрываем веб-приложение
-            Telegram.WebApp.close();
+            try {
+                // Отправляем данные
+                Telegram.WebApp.sendData("Привет!");
+                statusEl.textContent = 'Данные отправлены успешно!';
+                console.log("Data sent successfully");
+                
+                // Закрываем веб-приложение через 1 секунду
+                setTimeout(() => {
+                    Telegram.WebApp.close();
+                }, 1000);
+            } catch (e) {
+                statusEl.textContent = 'Ошибка отправки: ' + e.message;
+                console.error("Send error:", e);
+            }
         }
     </script>
 </body>
