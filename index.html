@@ -14,11 +14,18 @@
 
     <script>
         function sendHello() {
-            // Отправляем данные в бота
-            Telegram.WebApp.sendData("Привет!");
+            // Отправляем структурированные данные в бота
+            Telegram.WebApp.sendData(JSON.stringify({
+                action: "hello",
+                text: "Привет!"
+            }));
+            
             // Закрываем веб-приложение
             Telegram.WebApp.close();
         }
+        
+        // Инициализация WebApp
+        Telegram.WebApp.ready();
     </script>
 </body>
 </html>
