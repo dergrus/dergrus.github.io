@@ -8,90 +8,63 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        body {
-            padding: 15px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        #header {
-            padding: 10px 0;
-            text-align: center;
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        #map-container {
-            flex: 1;
-            margin-bottom: 15px;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background: #2481cc;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        button:disabled {
-            background: #cccccc;
-            cursor: not-allowed;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { padding: 15px; height: 100vh; display: flex; flex-direction: column; }
+        #header { padding: 10px 0; text-align: center; font-size: 18px; }
+        #map-container { flex: 1; margin: 10px 0; border-radius: 12px; overflow: hidden; }
+        #map { width: 100%; height: 100%; }
+        #data-display { padding: 10px; background: #f0f0f0; border-radius: 8px; margin-bottom: 10px; }
+        button { padding: 14px; background: #2481cc; color: white; border: none; border-radius: 8px; font-size: 16px; width: 100%; }
+        button:disabled { background: #cccccc; }
     </style>
 </head>
 <body>
     <div id="header">Привет, <span id="username">Гость</span>!</div>
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
-    <button id="sendButton" disabled>Отправить координаты</button>
+    <div id="map-container"><div id="map"></div></div>
+    <div id="data-display">Выберите точку на карте</div>
+    <button id="confirmButton" disabled>Подтвердить координаты</button>
 
     <script>
-        // Получаем имя пользователя из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || 'Гость';
+        // Получаем параметры из URL
+        const params = new URLSearchParams(window.location.search);
+        const username = params.get('username') ? decodeURIComponent(params.get('username')) : 'Гость';
+        const user_id = params.get('user_id') || '0';
         
         // Отображаем имя пользователя
         document.getElementById('username').textContent = username;
         
         // Инициализация карты
         const map = L.map('map').setView([55.751574, 37.573856], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         
-        let marker;
+        let marker, selectedCoords = null;
+        
+        // Обработчик клика по карте
         map.on('click', (e) => {
             if (marker) map.removeLayer(marker);
+            
             marker = L.marker(e.latlng).addTo(map);
-            document.getElementById('sendButton').disabled = false;
+            selectedCoords = e.latlng;
+            
+            document.getElementById('confirmButton').disabled = false;
+            document.getElementById('data-display').innerHTML = 
+                `Выбрано: Широта ${selectedCoords.lat.toFixed(6)}, Долгота ${selectedCoords.lng.toFixed(6)}`;
         });
         
-        // Обработчик кнопки отправки
-        document.getElementById('sendButton').addEventListener('click', () => {
-            if (!marker) return;
+        // Обработчик кнопки подтверждения
+        document.getElementById('confirmButton').addEventListener('click', () => {
+            if (!selectedCoords) return;
             
-            const coords = marker.getLatLng();
-            const data = {
+            // Сохраняем данные в localStorage
+            localStorage.setItem('user_coords', JSON.stringify({
+                user_id: user_id,
                 username: username,
-                latitude: coords.lat,
-                longitude: coords.lng
-            };
+                latitude: selectedCoords.lat,
+                longitude: selectedCoords.lng,
+                timestamp: Date.now()
+            }));
             
-            Telegram.WebApp.sendData(JSON.stringify(data));
+            // Закрываем веб-приложение
             Telegram.WebApp.close();
         });
         
