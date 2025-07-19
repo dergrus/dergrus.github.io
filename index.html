@@ -22,12 +22,10 @@
             display: flex;
             flex-direction: column;
         }
-        .telegram-mode {
-            background: #e3f2fd;
-        }
         #map-container {
             flex: 1;
             position: relative;
+            margin-bottom: 15px;
         }
         #map {
             width: 100%;
@@ -40,16 +38,13 @@
             background: white;
             padding: 15px;
             border-radius: 8px;
-            margin: 15px 0;
+            margin-bottom: 15px;
             box-shadow: 0 1px 5px rgba(0,0,0,0.05);
             font-size: 15px;
-        }
-        .button-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            text-align: center;
         }
         button {
+            width: 100%;
             padding: 14px;
             background: #2481cc;
             color: white;
@@ -67,78 +62,38 @@
             background: #cccccc;
             cursor: not-allowed;
         }
-        #debugButton {
-            background: #6c757d;
-        }
-        #debugButton:hover {
-            background: #5a6268;
-        }
-        #status {
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 10px;
-            display: none;
-        }
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
         .leaflet-marker-icon {
             filter: hue-rotate(200deg) saturate(200%);
         }
     </style>
 </head>
 <body>
+    <div id="info">Нажмите на карту, чтобы выбрать координаты</div>
+    
     <div id="map-container">
         <div id="map"></div>
     </div>
     
-    <div id="info">Нажмите на карту, чтобы выбрать координаты</div>
-    
-    <div class="button-container">
-        <button id="sendButton" disabled>Отправить координаты</button>
-        <button id="debugButton">Показать информацию отладки</button>
-    </div>
-    
-    <div id="status"></div>
+    <button id="sendButton" disabled>Отправить координаты</button>
 
     <script>
-        // ===== Глобальные переменные =====
+        // Глобальные переменные
         let map, marker, selectedCoords = null;
-        let debugLog = "=== Журнал отладки ===\n";
         
-        // ===== Инициализация Telegram =====
+        // Инициализация Telegram WebApp
         function initTelegram() {
             try {
                 if (window.Telegram && Telegram.WebApp) {
                     Telegram.WebApp.ready();
-                    debugLog += "✅ Telegram WebApp инициализирован\n";
-                    debugLog += `Platform: ${Telegram.WebApp.platform}\n`;
-                    debugLog += `Init Data: ${JSON.stringify(Telegram.WebApp.initData || {})}\n`;
-                    
-                    // Добавляем индикатор Telegram-режима
-                    document.body.classList.add('telegram-mode');
                     return true;
                 }
             } catch (e) {
-                debugLog += `❌ Ошибка инициализации Telegram: ${e.message}\n`;
+                console.error("Ошибка инициализации Telegram:", e);
             }
             return false;
         }
         
-        // ===== Проверка доступности sendData =====
-        function isSendDataAvailable() {
-            return window.Telegram?.WebApp?.sendData instanceof Function;
-        }
-        
-        // ===== Инициализация карты (Leaflet) =====
+        // Инициализация карты
         function initMap() {
             try {
                 // Центр Москвы
@@ -149,7 +104,7 @@
                 
                 // Добавление слоя OpenStreetMap
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    attribution: '&copy; OpenStreetMap',
                     maxZoom: 19
                 }).addTo(map);
                 
@@ -173,96 +128,49 @@
                     document.getElementById('sendButton').disabled = false;
                 });
                 
-                debugLog += "✅ Карта успешно инициализирована (Leaflet)\n";
-                
             } catch (e) {
-                debugLog += `❌ Критическая ошибка инициализации карты: ${e.message}\n`;
-                updateStatus("Ошибка загрузки карты. Попробуйте позже.", true);
+                document.getElementById('info').textContent = "Ошибка загрузки карты";
+                console.error("Ошибка инициализации карты:", e);
             }
         }
         
-        // ===== Отправка данных =====
+        // Отправка данных в Telegram
         function sendCoordinates() {
-            if (!selectedCoords) {
-                updateStatus("Сначала выберите точку на карте!", true);
-                return;
-            }
+            if (!selectedCoords) return;
             
-            const data = {
-                lat: selectedCoords[0],
-                lon: selectedCoords[1],
-                timestamp: Date.now()
-            };
+            // Формируем строку с координатами
+            const coordsString = `Широта: ${selectedCoords[0].toFixed(6)}, Долгота: ${selectedCoords[1].toFixed(6)}`;
             
-            debugLog += `🔄 Попытка отправки: ${JSON.stringify(data)}\n`;
-            
-            // Проверяем доступность sendData
-            if (isSendDataAvailable()) {
+            // Проверяем доступность API Telegram
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.sendData) {
                 try {
-                    Telegram.WebApp.sendData(JSON.stringify(data));
-                    debugLog += "✅ Данные отправлены через Telegram API\n";
-                    
-                    updateStatus("Координаты отправлены! Закрываем приложение...");
+                    // Отправляем данные (простая строка)
+                    Telegram.WebApp.sendData(coordsString);
                     
                     // Закрываем веб-приложение
                     setTimeout(() => {
-                        try {
+                        if (Telegram.WebApp.close) {
                             Telegram.WebApp.close();
-                            debugLog += "🔒 Веб-приложение закрыто\n";
-                        } catch (closeError) {
-                            debugLog += `❌ Ошибка закрытия: ${closeError.message}\n`;
                         }
-                    }, 1000);
+                    }, 300);
                     
                 } catch (error) {
-                    debugLog += `❌ Ошибка отправки: ${error.message}\n`;
-                    updateStatus(`Ошибка отправки: ${error.message}`, true);
+                    console.error("Ошибка отправки:", error);
+                    alert("Ошибка отправки координат");
                 }
-            } 
-            // Режим тестирования вне Telegram
-            else {
-                const statusMsg = "Режим отладки: координаты не отправлены";
-                debugLog += `⚠️ ${statusMsg}\n`;
-                updateStatus(`${statusMsg}: ${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`);
+            } else {
+                // Режим тестирования (вне Telegram)
+                alert("Отправлены координаты: " + coordsString);
             }
         }
         
-        // ===== Вспомогательные функции =====
-        function updateStatus(message, isError = false) {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = isError ? 'error' : 'success';
-            statusEl.style.display = 'block';
-            
-            // Автоскрытие сообщений об ошибке
-            if (isError) {
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
-            }
-        }
-        
-        function showDebugInfo() {
-            alert(debugLog);
-        }
-        
-        // ===== Инициализация при загрузке =====
+        // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
-            const isTelegram = initTelegram();
-            
-            // Инициализируем карту
+            initTelegram();
             initMap();
             
-            // Кнопка отправки
+            // Назначаем обработчик кнопки
             document.getElementById('sendButton').addEventListener('click', sendCoordinates);
-            
-            // Кнопка отладки
-            document.getElementById('debugButton').addEventListener('click', showDebugInfo);
-            
-            // Логирование состояния
-            debugLog += `Режим Telegram: ${isTelegram ? "ДА" : "НЕТ"}\n`;
-            debugLog += `sendData доступен: ${isSendDataAvailable() ? "ДА" : "НЕТ"}\n`;
-            debugLog += `User Agent: ${navigator.userAgent}\n`;
         });
     </script>
 </body>
